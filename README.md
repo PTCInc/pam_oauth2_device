@@ -5,6 +5,10 @@ PAM module for user authentication using
 
 The following instructions have been tested on Ubuntu 20.04.
 
+## Changes for PTCInc
+
+Removed unused features to ease deployment in container.
+
 ## Installation
 
 Install build dependencies.
