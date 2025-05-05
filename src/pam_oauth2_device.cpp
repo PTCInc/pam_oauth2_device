@@ -11,7 +11,6 @@
 #include <thread>
 
 #include "include/config.hpp"
-#include "include/ldapquery.hpp"
 #include "include/nayuki/QrCode.hpp"
 #include "include/nlohmann/json.hpp"
 
@@ -311,43 +310,7 @@ bool is_authorized(const Config &config, const std::string &username_local,
       return false;
     }
   }
-  // Try to authorize against local config
-  if (config.usermap.count(username_remote) > 0) {
-    if (config.usermap.find(username_remote)->second.count(username_local) >
-        0) {
-      syslog(LOG_INFO, "user %s mapped to %s", username_remote.c_str(),
-             username_local.c_str());
-      return true;
-    }
-  }
-  // Try to authorize against LDAP
-  if (!config.ldap_hosts.empty()) {
-    std::string filter;
-    auto filter_length = config.ldap_filter.length() + username_remote.length();
-    char *filter_buffer = new char[filter_length];
-    // Ignore `format` error, `ldap_filter` value is defined in the config
-    // file by a privilaged user.
-    // Flawfinder: ignore
-    snprintf(filter_buffer, filter_length, config.ldap_filter.c_str(),
-             username_remote.c_str());
-    filter = filter_buffer;
-    delete[] filter_buffer;
-
-    for (auto ldap_host : config.ldap_hosts) {
-      int rc = ldap_check_attr(ldap_host, config.ldap_basedn, config.ldap_user,
-                               config.ldap_passwd, filter, config.ldap_attr,
-                               username_local);
-      if (rc == LDAPQUERY_TRUE) {
-        syslog(LOG_INFO, "user %s mapped to %s via LDAP",
-               username_remote.c_str(), username_local.c_str());
-        return true;
-      }
-    }
-  }
-  syslog(LOG_WARNING,
-         "cannot find mapping between user %s and local account %s",
-         username_remote.c_str(), username_local.c_str());
-  return false;
+  return true;
 }
 
 int safe_return(int rc) {
@@ -410,7 +373,7 @@ PAM_EXTERN int pam_sm_authenticate(pam_handle_t *pamh, int flags, int argc,
                    device_auth_response.device_code.c_str(), &token);
     get_userinfo(config.userinfo_endpoint.c_str(), token.c_str(),
                  config.username_attribute.c_str(), &userinfo);
-  } catch (PamError &e) {
+                } catch (PamError &e) {
     return safe_return(PAM_SYSTEM_ERR);
   } catch (TimeoutError &e) {
     return safe_return(PAM_AUTH_ERR);
